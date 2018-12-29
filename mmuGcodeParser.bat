@@ -6,4 +6,4 @@ IF NOT EXIST "%filepath%" (
     EXIT /B 1
 )
 ECHO Adjusting the gcode file. Please wait ...
-C:\Users\nikol01\AppData\Local\Continuum\anaconda3\python.exe C:\Users\nikol01\ownCloud\PycharmProjects\MMUGcodeParser\mmuGcodeParser.py %filepath%
+C:\<path to python>\python.exe C:\<path to script>\mmuGcodeParser.py %filepath%
