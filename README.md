@@ -4,14 +4,14 @@ Improves Slic3r gcode for better MMU handling and allows true Multi Material pri
 If you're using Prusa MMU1/MMU2 and Slic3r 1.41 you will encounter an issue if the temperature differ between the used materials.
 Slic3r sets the new temperature between toolchanges only once after cooling and before unloading. This causing an issue in the transition from high temp filament to cold because it is being purged with cold temperature. 
 
-## Index
- 1. [Installation](#installation)
+## Table of contents
+ * [Installation](#installation)
    * [Linux/Mac](#linux/Mac)
    * [Windows](#windows)
- 2. [Usage](#usage)
- 3. [How it works](#how_it_works)
- 4. [Testobject](#testobject)
- 5. [Roadmap](#roadmap)
+ * [Usage](#usage)
+ * [How it works](#how-it-works)
+ * [Testobject](#testobject)
+ * [Roadmap](#roadmap)
 
 ## Installation
 The python script can be either placed in Slic3r for post processing under "Print Settings" -> "Output options" -> "Post-processing scripts".
