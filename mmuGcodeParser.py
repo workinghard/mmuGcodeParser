@@ -1,6 +1,28 @@
 #!/usr/local/bin/python3
 # encoding: utf-8
 
+"""
+ * 
+ *  mmuGcodeParser
+ *
+ *  Created by Nikolai Rinas on 12/28/2018
+ *  Copyright (c) 2018 Nikolai Rinas. All rights reserved.
+ * 
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+  
+ *   You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+"""
+
 import re  # regular expression library for search/replace
 import os  # os routines for reading/writing files
 import sys  # system library for input/output files
@@ -25,23 +47,15 @@ HIGH2LOW = "High2Low"
 NOTRANSITION = "NoTrans"
 ID_LINE = "idLine"
 
+# For debugging purpose
 debug_set = False
+
+# Drop the temperature by 10C during the ramming process. Checking if it might help
 ram_temp_diff = 10
 
 # get the input file specified, and turn it into a path variable for the current OS
-# inpath = os.path.normpath(args.input)
-# inpath = os.path.normpath("Yang_0.2mm_PLA_PETG_MK3MMU2.gcode")
-# inpath = os.path.normpath("KobayashiFidgetCube-dual-CubesOnly_0.15mm_PLA_MK3MMU2.gcode")
 inpath = sys.argv[1]
-
-# if there is no output specified, call it "..._ramcool.gcode" based off the input filename
-# if args.output == "none":
 outpath = os.path.normpath(os.path.splitext(inpath)[0] + "_adjusted.gcode")
-# else:
-# outpath = os.path.normpath(args.output)
-# print(inpath)
-# print(outpath)
-# wait = input("PRESS ENTER TO CONTINUE.")
 
 # open the input and output files (one read only, one for writing)
 infile = open(inpath, 'r', encoding="utf8")
