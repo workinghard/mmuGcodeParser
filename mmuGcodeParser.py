@@ -203,28 +203,29 @@ def none_handler(p_tool_change, p_line_number):
     # Just in case we need to do something at the end
     lv_output = ""
     lv_insert = 0  # 0 = don't insert, +1 = after the line, -1 before the line, -9 = comment out
-    if p_tool_change[p_line_number] == UNLOAD_START_LINE:
-        if ram_temp_diff > 0:  # Only if set
-            # Add temp drop for better tip
-            lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
-            lv_output = "M104 S" + str(lv_lower_temp)
-            lv_insert = 1  # after the line
+    if CURR_TEMP in p_tool_change:
+        if p_tool_change[p_line_number] == UNLOAD_START_LINE:
+            if ram_temp_diff > 0:  # Only if set
+                # Add temp drop for better tip
+                lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
+                lv_output = "M104 S" + str(lv_lower_temp)
+                lv_insert = 1  # after the line
 
-    if p_tool_change[p_line_number] == DEST_TEMP_LINE:
-        # nothing to do
-        pass
+        if p_tool_change[p_line_number] == DEST_TEMP_LINE:
+            # nothing to do
+            pass
 
-    if p_tool_change[p_line_number] == UNLOAD_LINE:
-        # nothing to do
-        pass
+        if p_tool_change[p_line_number] == UNLOAD_LINE:
+            # nothing to do
+            pass
 
-    if p_tool_change[p_line_number] == PURGE_LINE:
-        # nothing to do
-        pass
+        if p_tool_change[p_line_number] == PURGE_LINE:
+            # nothing to do
+            pass
 
-    if p_tool_change[p_line_number] == PRINT_LINE:
-        # nothing to do
-        pass
+        if p_tool_change[p_line_number] == PRINT_LINE:
+            # nothing to do
+            pass
 
     # print(toolChange["id"])
     return lv_output, lv_insert
@@ -271,6 +272,8 @@ for line in infile:
     targetTemp_match = target_temp_detect.search(line)
     if targetTemp_match is not None:
         if len(myToolChanges) > 0:  # we found at least the start tool change
+            # print(myToolChanges[toolChangeID])
+
             if DEST_TEMP_LINE not in myToolChanges[toolChangeID]:
                 # determine the temperature value
                 tempMatch = re.search(r"S[0-9]*", line)
@@ -312,6 +315,15 @@ for line in infile:
     # increment the line number
     line_number = line_number + 1
 
+"""
+for toolChange in myToolChanges:
+  if DEST_TEMP in myToolChanges[toolChange]:
+    print(myToolChanges[toolChange])
+  else:
+    print("Key is missing")
+    print(myToolChanges[toolChange])
+"""      
+
 """ -------------------------
 ### Determine the transitions  
 """
@@ -321,24 +333,27 @@ lastTemp = initTemp
 for toolChange in myToolChanges:
     # Last tool change is unloading only
     #  Special handler required in case we need to do something there
-    if myToolChanges[toolChange][DEST_TEMP] == "0":
-        myToolChanges[toolChange][TRANSITION] = NOTRANSITION
-    else:
-        if lastTemp > myToolChanges[toolChange][DEST_TEMP]:
-            # Transition from higher value to lower value
-            myToolChanges[toolChange][TRANSITION] = HIGH2LOW
+    if DEST_TEMP in myToolChanges[toolChange]:
+        if myToolChanges[toolChange][DEST_TEMP] == "0":
+            myToolChanges[toolChange][TRANSITION] = NOTRANSITION
         else:
-            if lastTemp == myToolChanges[toolChange][DEST_TEMP]:
-                # If there is no difference in temperature, no transition is required
-                myToolChanges[toolChange][TRANSITION] = NOTRANSITION
+            if lastTemp > myToolChanges[toolChange][DEST_TEMP]:
+                # Transition from higher value to lower value
+                myToolChanges[toolChange][TRANSITION] = HIGH2LOW
             else:
-                # Transition from lower to higher value
-                myToolChanges[toolChange][TRANSITION] = LOW2HIGH
+                if lastTemp == myToolChanges[toolChange][DEST_TEMP]:
+                    # If there is no difference in temperature, no transition is required
+                    myToolChanges[toolChange][TRANSITION] = NOTRANSITION
+                else:
+                    # Transition from lower to higher value
+                    myToolChanges[toolChange][TRANSITION] = LOW2HIGH
 
-    # Save current temperature. Needed for first tool change
-    myToolChanges[toolChange][CURR_TEMP] = lastTemp
-    # Remember the last temperature
-    lastTemp = myToolChanges[toolChange][DEST_TEMP]
+        # Save current temperature. Needed for first tool change
+        myToolChanges[toolChange][CURR_TEMP] = lastTemp
+        # Remember the last temperature
+        lastTemp = myToolChanges[toolChange][DEST_TEMP]
+    else:
+        myToolChanges[toolChange][TRANSITION] = NOTRANSITION
 
 """ ----------------------
 ### Update the gcode file
