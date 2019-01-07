@@ -14,7 +14,8 @@ Slic3r sets the new temperature between toolchanges only once after cooling and 
  * [Roadmap](#roadmap)
 
 ## Installation
-The python script can be either placed in Slic3r for post processing under "Print Settings" -> "Output options" -> "Post-processing scripts".
+The python script can be either placed in Slic3r for post processing under "Print Settings" -> "Output options" -> "Post-processing scripts". More details can be found in the official [Slic3r manual](https://manual.slic3r.org/advanced/post-processing)
+
 Or it can be called manually passing the gcode file as an argument.
 
 ### Linux/Mac
