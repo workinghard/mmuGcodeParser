@@ -35,6 +35,7 @@ from io import open
 VERSION = "v0.1"
 MYGCODEMARK = " ; MMUGCODEPARSER " + VERSION
 UNLOAD_START_LINE = "unloadStartLine"
+LOAD_START_LINE = "loadStartLine"
 DEST_TEMP_LINE = "destTempLine"
 DEST_TEMP = "destTemp"
 UNLOAD_LINE = "unloadLine"
@@ -52,6 +53,7 @@ debug_set = False
 
 # Drop the temperature by 10C during the ramming process. Checking if it might help
 ram_temp_diff = 10
+ram_temp_diff_wait_for_stabilize = False
 
 # get the input file specified, and turn it into a path variable for the current OS
 inpath = sys.argv[1]
@@ -72,8 +74,9 @@ unloading = r"^T[0-9]?"
 purge = r"^; CP TOOLCHANGE WIPE"
 # 3. Print
 printLine = r"^; CP TOOLCHANGE END"
-# 4. Before unload
+# 4. Before unload/load
 beforeUnload = r"^; CP TOOLCHANGE UNLOAD"
+beforeLoad = r"^; CP TOOLCHANGE LOAD"
 # 5. Target temperature
 targetTemp = r"^M104 S([0-9]*)"
 
@@ -86,6 +89,7 @@ purge_detect = re.compile(purge)
 print_detect = re.compile(printLine)
 unloading_detect = re.compile(unloading)
 before_unload_detect = re.compile(beforeUnload)
+before_load_detect = re.compile(beforeLoad)
 target_temp_detect = re.compile(targetTemp)
 
 
@@ -208,8 +212,21 @@ def none_handler(p_tool_change, p_line_number):
             if ram_temp_diff > 0:  # Only if set
                 # Add temp drop for better tip
                 lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
-                lv_output = "M104 S" + str(lv_lower_temp)
+                if ram_temp_diff_wait_for_stabilize:
+                    # wait for stable nozzle temp
+                    lv_output = "M109 S" + str(lv_lower_temp)
+                else:
+                    # set nozzle temp without wait
+                    lv_output = "M104 S" + str(lv_lower_temp)
                 lv_insert = 1  # after the line
+
+        if p_tool_change[p_line_number] == LOAD_START_LINE:
+            if ram_temp_diff > 0:  # Only if set
+                lv_restore_temp = int(p_tool_change[CURR_TEMP])
+                # don't wait for stable nozzle temperature
+                # (enough time for nozzle to reach correct temp)
+                lv_output = "M104 S" + str(lv_restore_temp)
+                lv_insert = 1
 
         if p_tool_change[p_line_number] == DEST_TEMP_LINE:
             # nothing to do
@@ -261,14 +278,21 @@ for line in infile:
             # create dictionary entry
             myToolChanges[toolChangeID] = myToolChange
 
-    # Search for the 'before loading' position
+    # Search for the 'before unloading' position
     before_unload_match = before_unload_detect.search(line)
     if before_unload_match is not None:
         if len(myToolChanges) > 0:  # we found at least the start tool change
             # remember the line number
             myToolChanges[toolChangeID][line_number] = UNLOAD_START_LINE
 
-    # Search for the target temperature
+    # Search for the 'before loading' position
+    before_load_match = before_load_detect.search(line)
+    if before_load_match is not None:
+        if len(myToolChanges) > 0:  # we found at least the start tool change
+            # remember the line number
+            myToolChanges[toolChangeID][line_number] = LOAD_START_LINE
+
+# Search for the target temperature
     targetTemp_match = target_temp_detect.search(line)
     if targetTemp_match is not None:
         if len(myToolChanges) > 0:  # we found at least the start tool change
@@ -322,7 +346,7 @@ for toolChange in myToolChanges:
   else:
     print("Key is missing")
     print(myToolChanges[toolChange])
-"""      
+"""
 
 """ -------------------------
 ### Determine the transitions  
