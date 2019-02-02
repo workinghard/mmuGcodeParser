@@ -4,6 +4,10 @@ Improves Slic3r gcode for better MMU handling and allows true Multi Material pri
 If you're using Prusa MMU1/MMU2 and Slic3r 1.41 you will encounter an issue if the temperature differ between the used materials.
 Slic3r sets the new temperature between toolchanges only once after cooling and before unloading. This causing an issue in the transition from high temp filament to cold because it is being purged with cold temperature. 
 
+# Changelog
+ * v0.2 Set ram_temp_diff_wait_for_stabilize = True to drop the temperature even for same type of filament. Thanks @membrein
+ * v0.1 Initial upload
+
 ## Table of contents
  * [Installation](#installation)
    * [Linux/Mac](#linux/Mac)
