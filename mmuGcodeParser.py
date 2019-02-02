@@ -32,7 +32,7 @@ from io import open
 """ ---------------------------------------------------------------------
 ### Constants
 """
-VERSION = "v0.1"
+VERSION = "v0.2"
 MYGCODEMARK = " ; MMUGCODEPARSER " + VERSION
 UNLOAD_START_LINE = "unloadStartLine"
 LOAD_START_LINE = "loadStartLine"
@@ -53,6 +53,7 @@ debug_set = False
 
 # Drop the temperature by 10C during the ramming process. Checking if it might help
 ram_temp_diff = 10
+# Set this to True if you want to drop the temperature even for the same filament 
 ram_temp_diff_wait_for_stabilize = False
 
 # get the input file specified, and turn it into a path variable for the current OS
