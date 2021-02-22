@@ -1,26 +1,24 @@
-#!/usr/local/bin/python3
+#!which python3
 # encoding: utf-8
 
-"""
- * 
- *  mmuGcodeParser
- *
- *  Created by Nikolai Rinas on 12/28/2018
- *  Copyright (c) 2018 Nikolai Rinas. All rights reserved.
- * 
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
-  
- *   You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+""" 
+mmuGcodeParser
+
+Created by Nikolai Rinas on 12/28/2018
+Copyright (c) 2018 Nikolai Rinas. All rights reserved.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>
 """
 
 import re  # regular expression library for search/replace
@@ -29,11 +27,13 @@ import sys  # system library for input/output files
 
 from io import open
 
-""" ---------------------------------------------------------------------
+""" 
+### ---------------------------------------------------------------
 ### Constants
-"""
-VERSION = "v0.2"
-MYGCODEMARK = " ; MMUGCODEPARSER " + VERSION
+### ---------------------------------------------------------------
+""" 
+VERSION = "v0.3"
+MYGCODEMARK = "MMUGCODEPARSER " + VERSION
 UNLOAD_START_LINE = "unloadStartLine"
 LOAD_START_LINE = "loadStartLine"
 DEST_TEMP_LINE = "destTempLine"
@@ -48,25 +48,37 @@ HIGH2LOW = "High2Low"
 NOTRANSITION = "NoTrans"
 ID_LINE = "idLine"
 
+""" 
+### ---------------------------------------------------------------
+### Settings
+### ---------------------------------------------------------------
+""" 
 # For debugging purpose
 debug_set = False
 
 # Drop the temperature by 10C during the ramming process. Checking if it might help
 ram_temp_diff = 10
+
 # Set this to True if you want to drop the temperature even for the same filament 
 ram_temp_diff_wait_for_stabilize = False
 
-# get the input file specified, and turn it into a path variable for the current OS
+# Prefix for output file
+outpath_prefix = ""
+
+# Suffix for output file
+outpath_suffix = "_adjusted"
+
+# get the input file specified
 inpath = sys.argv[1]
-outpath = os.path.normpath(os.path.splitext(inpath)[0] + "_adjusted.gcode")
 
-# open the input and output files (one read only, one for writing)
+# open the input file for reading
 infile = open(inpath, 'r', encoding="utf8")
-outfile = open(outpath, 'w', encoding="utf8")
 
-""" ---------------------------------------------------------------
+""" 
+### ---------------------------------------------------------------
 ### Compile the regular expressions
-"""
+### ---------------------------------------------------------------
+""" 
 
 # We have to find following spots
 # 1. Unload procedure
@@ -81,8 +93,13 @@ beforeLoad = r"^; CP TOOLCHANGE LOAD"
 # 5. Target temperature
 targetTemp = r"^M104 S([0-9]*)"
 
-# start at TOOLCHANGE START comment. "^" simply indicates "beginning of line"
+# Start at TOOLCHANGE START comment. "^" simply indicates "beginning of line"
 start = r"^; toolchange #[0-9]*"
+
+# Regular expressions to find settings
+mmuGPDebug = r"^; MMUGP Debug"
+mmuGPRamTempDiff = r"^; MMUGP Ram Temp Diff ([0-9]*)"
+mmuGPRamTempDiffWaitStabilize = r"^; MMUPG Ram Temp Diff Wait For Stabilize"
 
 # turn those strings into compiled regular expressions so we can search
 start_detect = re.compile(start)
@@ -92,17 +109,19 @@ unloading_detect = re.compile(unloading)
 before_unload_detect = re.compile(beforeUnload)
 before_load_detect = re.compile(beforeLoad)
 target_temp_detect = re.compile(targetTemp)
+mmugp_debug_detect = re.compile(mmuGPDebug)
+mmugp_ram_temp_diff_detect = re.compile(mmuGPRamTempDiff)
+mmugp_ram_temp_diff_wait_stabilize_detect = re.compile(mmuGPRamTempDiffWaitStabilize)
 
-
-"""---------------------------------------------------------------------- 
+""" 
+### ---------------------------------------------------------------
 ### Functions
-"""
-
+### ---------------------------------------------------------------
+""" 
 
 def file_write(file, string):
     # print(string)
     file.write(string)
-
 
 def low2high_handler(p_tool_change, p_line_number):
     """ Basic idea
@@ -248,21 +267,72 @@ def none_handler(p_tool_change, p_line_number):
     # print(toolChange["id"])
     return lv_output, lv_insert
 
+# Progressbar for analyzing input file
+progress_unknown_state = -1
+def progress_unknown(cur=0, text=""):
+    global progress_unknown_state
+    progress_unknown_states = "|/-\\"
 
-""" ------------------------------------------------------------------------------
+    if progress_unknown_state == -1:
+        progress_unknown_state = 0
+        sys.stdout.flush()
+
+    sys.stdout.write("[" + progress_unknown_states[progress_unknown_state:progress_unknown_state+1] + "] " + text + " " + str(cur) + "\r")
+
+    if cur % 1000 == 0:
+        progress_unknown_state += 1
+        if progress_unknown_state >= len(progress_unknown_states):
+            progress_unknown_state = 0
+
+    sys.stdout.flush()
+
+# Progressbar for analyzing tool changes and writing output file
+def progress_range(cur, text="", start=1, end=10, maxwidth=50, clearOnEnd=True):
+    curPos = int(translate(cur, start, end, start, maxwidth))
+    doneLen = curPos - 1
+    todoLen = maxwidth - curPos
+    
+    progressLine = "[%s>%s] %s %d of %d (%d%%)\r" % ("=" * doneLen, " " * todoLen, text, cur, end, int(cur / end * 100))
+    sys.stdout.write(progressLine)
+
+    if cur == end:
+        sys.stdout.write("%s\r" % (" " * len(progressLine)))
+
+    sys.stdout.flush()
+
+def translate(value, leftMin, leftMax, rightMin, rightMax):
+    # Figure out how 'wide' each range is
+    leftSpan = leftMax - leftMin
+    rightSpan = rightMax - rightMin
+
+    # Convert the left range into a 0-1 range (float)
+    valueScaled = float(value - leftMin) / float(leftSpan)
+
+    # Convert the 0-1 range into a value in the right range.
+    return rightMin + (valueScaled * rightSpan)
+
+""" 
+### ------------------------------------------------------------------------------
 ### Main process
+### ------------------------------------------------------------------------------
 """
 
-
-""" ----------------------------------------------
+""" 
+### ----------------------------------------------
 ### Scan the gcode for tool changes and the values
+### ----------------------------------------------
 """
+
+print("Analyzing input file...")
+
 # walk through each line in the file
 myToolChanges = {}  # dictionary with all tool changes
 line_number = 1     # index in the loop
 toolChangeID = 0    # required to track the current tool change
 initTemp = 0        # required to track the current temp
+lineCount = 0       # Number of lines in input file
 for line in infile:
+    progress_unknown(line_number, "Line")
 
     # Search for the tool change starts
     start_match = start_detect.search(line)
@@ -293,7 +363,7 @@ for line in infile:
             # remember the line number
             myToolChanges[toolChangeID][line_number] = LOAD_START_LINE
 
-# Search for the target temperature
+    # Search for the target temperature
     targetTemp_match = target_temp_detect.search(line)
     if targetTemp_match is not None:
         if len(myToolChanges) > 0:  # we found at least the start tool change
@@ -337,25 +407,40 @@ for line in infile:
             # remember the line number
             myToolChanges[toolChangeID][line_number] = PRINT_LINE
 
+    # Search for Debug setting
+    debug_match = mmugp_debug_detect.search(line)
+    if debug_match is not None:
+        debug_set = True
+
+    # Search for Ram Temp Diff setting
+    ram_temp_diff_match = mmugp_ram_temp_diff_detect.search(line)
+    if ram_temp_diff_match is not None:
+        ram_temp_diff = int(ram_temp_diff_match.group(1))
+
+    # Search for Ram Temp Diff Wait For Stabilize setting
+    ram_temp_diff_wait_for_stabilize_match = mmugp_ram_temp_diff_wait_stabilize_detect.search(line)
+    if ram_temp_diff_wait_for_stabilize_match is not None:
+        ram_temp_diff_wait_for_stabilize = True
+
     # increment the line number
     line_number = line_number + 1
+    lineCount = lineCount + 1
 
-"""
-for toolChange in myToolChanges:
-  if DEST_TEMP in myToolChanges[toolChange]:
-    print(myToolChanges[toolChange])
-  else:
-    print("Key is missing")
-    print(myToolChanges[toolChange])
+""" 
+### -------------------------
+### Determine the transitions
+### -------------------------
 """
 
-""" -------------------------
-### Determine the transitions  
-"""
+print("Determining tool changes...")
 
 # Determine the transitions for the tool changes
 lastTemp = initTemp
+currentToolChange = 0
 for toolChange in myToolChanges:
+    currentToolChange += 1
+    progress_range(currentToolChange, "Toolchange", 1, len(myToolChanges))
+
     # Last tool change is unloading only
     #  Special handler required in case we need to do something there
     if DEST_TEMP in myToolChanges[toolChange]:
@@ -380,15 +465,30 @@ for toolChange in myToolChanges:
     else:
         myToolChanges[toolChange][TRANSITION] = NOTRANSITION
 
-""" ----------------------
+""" 
+### ----------------------
 ### Update the gcode file
+### ----------------------
 """
+
+print("Writing output file...")
+
+# First we build our new filename
+directory, filename = os.path.split(inpath)
+basename = os.path.splitext(filename)[0]
+
+newname = outpath_prefix + basename + outpath_suffix + ".gcode"
+outpath = os.path.normpath(os.path.join(directory, newname))
+outfile = open(outpath, 'w', encoding="utf8")
+
 # Here we have all the data to make our decisions and updating the gcode file
 # Modify the file
 line_number = 1
 # Go back to the fist position in the input file
 infile.seek(0)
 for line in infile:
+    progress_range(line_number, "Line", 1, lineCount)
+
     output = ""  # reset the output
     action = 0   # reset the insert position
 
@@ -398,20 +498,23 @@ for line in infile:
             if myToolChanges[toolChange][TRANSITION] == LOW2HIGH:
                 # Calling handler for the lower to higher value transition
                 output, action = low2high_handler(myToolChanges[toolChange], line_number)
-            if myToolChanges[toolChange][TRANSITION] == HIGH2LOW:
+            elif myToolChanges[toolChange][TRANSITION] == HIGH2LOW:
                 # Calling handler for the higher to lower value transition
                 output, action = high2low_handler(myToolChanges[toolChange], line_number)
-            if myToolChanges[toolChange][TRANSITION] == NOTRANSITION:
+            elif myToolChanges[toolChange][TRANSITION] == NOTRANSITION:
                 # Calling handler for no transition case
                 output, action = none_handler(myToolChanges[toolChange], line_number)
+
+            # Nothing todo anymore
+            break
 
     # Perform the action determined for this line
     if action == 1:  # insert after this line
         file_write(outfile, line)
-        file_write(outfile, output + MYGCODEMARK + "\n")
+        file_write(outfile, output + " ; " + MYGCODEMARK + "\n")
 
     if action == -1:  # insert before this line
-        file_write(outfile, output + MYGCODEMARK + "\n")
+        file_write(outfile, output + " ; " + MYGCODEMARK + "\n")
         file_write(outfile, line)
 
     if action == -9:  # comment out the line
@@ -427,9 +530,15 @@ for line in infile:
 # Print a nice summery at the end of the file
 if debug_set is True:
     file_write(outfile, "; Debug information: " + MYGCODEMARK + "\n")
-    for toolChange in myToolChanges:
-        file_write(outfile, "; " + str(myToolChanges[toolChange]) + "\n")
-    file_write(outfile, ';;;;"Prusa PLA MMU2";')
+    file_write(outfile, "; Settings: \n")
+    file_write(outfile, ";\tDebug: " + str(debug_set) + "\n")
+    file_write(outfile, ";\tOutput Prefix: " + outpath_prefix + "\n")
+    file_write(outfile, ";\tOutput Suffix: " + outpath_suffix + "\n")
+    file_write(outfile, ";\tRam Temp Difference: " + str(ram_temp_diff) + "\n")
+    file_write(outfile, ";\tRam Temp Difference Wait for Stabilize: " + str(ram_temp_diff_wait_for_stabilize) + "\n")
 
-# print(myToolChanges)
-# end
+    file_write(outfile, "; Tool Changes: \n")
+    for toolChange in myToolChanges:
+        file_write(outfile, ";\t" + str(myToolChanges[toolChange]) + "\n")
+
+print("Done")
