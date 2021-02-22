@@ -24,10 +24,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 """
 @TODOs
 - Don't put debug output at last part in file (printer thinks file is incomplete)
+- Modify "Wait for Dest Temp" to R instead of S
 - Add sanity checks for temperatures
 - Add option to wait before toolchange/temp change to let the planner get empty and be in a stable state
 - Add option to wait for all temperatures to be stable before proceeding
 - Add option to overwrite file by moving new file to old file
+- Add option to disable fan while tool changing
 """
 
 import re  # regular expression library for search/replace
