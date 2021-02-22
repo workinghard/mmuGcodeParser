@@ -100,6 +100,8 @@ start = r"^; toolchange #[0-9]*"
 mmuGPDebug = r"^; MMUGP Debug"
 mmuGPRamTempDiff = r"^; MMUGP Ram Temp Diff ([0-9]*)"
 mmuGPRamTempDiffWaitStabilize = r"^; MMUPG Ram Temp Diff Wait For Stabilize"
+mmuGPFilenamePrefix = r"^; MMUGP Filename Prefix ?([a-zA-Z_-]*)"
+mmuGPFilenameSuffix = r"^; MMUGP Filename Suffix ?([a-zA-Z_-]*)"
 
 # turn those strings into compiled regular expressions so we can search
 start_detect = re.compile(start)
@@ -112,6 +114,8 @@ target_temp_detect = re.compile(targetTemp)
 mmugp_debug_detect = re.compile(mmuGPDebug)
 mmugp_ram_temp_diff_detect = re.compile(mmuGPRamTempDiff)
 mmugp_ram_temp_diff_wait_stabilize_detect = re.compile(mmuGPRamTempDiffWaitStabilize)
+mmugp_filename_prefix_detect = re.compile(mmuGPFilenamePrefix)
+mmugp_filename_suffix_detect = re.compile(mmuGPFilenameSuffix)
 
 """ 
 ### ---------------------------------------------------------------
@@ -421,6 +425,16 @@ for line in infile:
     ram_temp_diff_wait_for_stabilize_match = mmugp_ram_temp_diff_wait_stabilize_detect.search(line)
     if ram_temp_diff_wait_for_stabilize_match is not None:
         ram_temp_diff_wait_for_stabilize = True
+
+    # Search for Filename Prefix setting
+    filename_prefix_match = mmugp_filename_prefix_detect.search(line)
+    if filename_prefix_match is not None:
+        outpath_prefix = filename_prefix_match.group(1)
+
+    # Search for Filename Suffix setting
+    filename_suffix_match = mmugp_filename_suffix_detect.search(line)
+    if filename_suffix_match is not None:
+        outpath_suffix = filename_suffix_match.group(1)
 
     # increment the line number
     line_number = line_number + 1
