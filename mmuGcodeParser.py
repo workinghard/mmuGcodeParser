@@ -21,6 +21,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>
 """
 
+"""
+@TODOs
+- Don't put debug output at last part in file (printer thinks file is incomplete)
+- Add sanity checks for temperatures
+- Add option to wait before toolchange/temp change to let the planner get empty and be in a stable state
+- Add option to wait for all temperatures to be stable before proceeding
+- Add option to overwrite file by moving new file to old file
+"""
+
 import re  # regular expression library for search/replace
 import os  # os routines for reading/writing files
 import sys  # system library for input/output files
