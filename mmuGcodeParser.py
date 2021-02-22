@@ -160,12 +160,12 @@ def low2high_handler(p_tool_change, p_line_number):
     if p_tool_change.get(UNLOAD_START_LINE) == p_line_number:
         if RAM_TEMP in p_tool_change and p_tool_change[RAM_TEMP] > 0:
             # If we have a ram temp for this toolchange we set the temp
-            lv_output = "M104 S" + str(p_tool_change[RAM_TEMP])
+            lv_output = "M104 S" + str(p_tool_change[RAM_TEMP]) + "; Ram temp"
             lv_insert = 1
         elif ram_temp_diff > 0:  # Only if set and no direct ram temp
             # Add temp drop for better tip
             lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
-            lv_output = "M104 S" + str(lv_lower_temp)
+            lv_output = "M104 S" + str(lv_lower_temp) + "; Ram temp"
             lv_insert = 1
 
     if p_tool_change.get(DEST_TEMP_LINE) == p_line_number:
@@ -176,19 +176,18 @@ def low2high_handler(p_tool_change, p_line_number):
     if p_tool_change.get(UNLOAD_LINE) == p_line_number:
         # set hot (to save some time)
         # insert the destination temp
-        lv_output = "M104 S" + p_tool_change[DEST_TEMP]
-        lv_insert = -1  # insert before start unloading
+        lv_output = "M104 S" + p_tool_change[DEST_TEMP] + "; Dest temp"
+        lv_insert = -1
 
     if p_tool_change.get(PURGE_LINE) == p_line_number:
         # We have to wait for destination temp
-        lv_output = "M109 S" + p_tool_change[DEST_TEMP]
+        lv_output = "M109 S" + p_tool_change[DEST_TEMP] + "; Dest temp"
         lv_insert = 1  # insert after the purge line identificator
 
     if p_tool_change.get(PRINT_LINE) == p_line_number:
         # We are already hot. Nothing to do here
         pass
 
-    # print(toolChange["id"])
     return lv_output, lv_insert
 
 
@@ -204,6 +203,7 @@ def high2low_handler(p_tool_change, p_line_number):
       -> Stay hot, do nothing. Load to nozzle for smooth loading process
     -> Purge
       -> Before start purging, set cool temp. We can cool down during the purging process
+      -> Only if no purge temp is set (if so we go to the purge temp)
     -> Print
       -> Before start to print, wait for destination temp. Most likely temp will bounce pretty hard
     """
@@ -214,12 +214,12 @@ def high2low_handler(p_tool_change, p_line_number):
     if p_tool_change.get(UNLOAD_START_LINE) == p_line_number:
         if RAM_TEMP in p_tool_change and p_tool_change[RAM_TEMP] > 0:
             # If we have a ram temp for this toolchange we set the temp
-            lv_output = "M104 S" + str(p_tool_change[RAM_TEMP])
+            lv_output = "M104 S" + str(p_tool_change[RAM_TEMP]) + "; Ram temp"
             lv_insert = 1
         elif ram_temp_diff > 0:  # Only if set and no direct ram temp
             # Add temp drop for better tip
             lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
-            lv_output = "M104 S" + str(lv_lower_temp)
+            lv_output = "M104 S" + str(lv_lower_temp) + "; Ram temp"
             lv_insert = 1  # after the line
 
     if p_tool_change.get(DEST_TEMP_LINE) == p_line_number:
@@ -228,23 +228,33 @@ def high2low_handler(p_tool_change, p_line_number):
 
     if p_tool_change.get(UNLOAD_LINE) == p_line_number:
         # During unloading there is nothing to do
-        # In case we are dropping the temp during ramming, we need to bump it up again
-        if ram_temp_diff > 0:  # Only if set
-            lv_output = "M104 S" + p_tool_change[CURR_TEMP]
-            lv_insert = -1  # before the line
-        pass
 
-    if p_tool_change.get(PURGE_LINE) == p_line_number:
-        # set to cold. We will cool down faster during purging
-        lv_output = "M104 S" + p_tool_change[DEST_TEMP]
+        # If we have a purge temp we will set it
+        if PURGE_TEMP in p_tool_change:
+            lv_output = "M104 S" + str(p_tool_change[PURGE_TEMP]) + "; Purge temp"
+            lv_insert = -1
+
+        # If we have a Ram temp and it is lower than temp we want we need to bump it up again
+        elif RAM_TEMP in p_tool_change and p_tool_change[RAM_TEMP] < int(p_tool_change[CURR_TEMP]):
+            lv_output = "M104 S" + p_tool_change[CURR_TEMP] + "; Curr temp"
+            lv_insert = -1
+
+        # In case we are dropping the temp during ramming, we need to bump it up again
+        elif ram_temp_diff > 0:
+            lv_output = "M104 S" + p_tool_change[CURR_TEMP] + "; Curr temp"
+            lv_insert = -1
+
+    if p_tool_change.get(PURGE_LINE) == p_line_number and not PURGE_TEMP in p_tool_change:
+        # Set to cold. We will cool down faster during purging
+        # But only if no purge temperature is set
+        lv_output = "M104 S" + p_tool_change[DEST_TEMP] + "; Dest temp"
         lv_insert = 1  # after the line
 
     if p_tool_change.get(PRINT_LINE) == p_line_number:
         # wait for stable nozzle temp
-        lv_output = "M109 S" + p_tool_change[DEST_TEMP]
+        lv_output = "M109 S" + p_tool_change[DEST_TEMP] + "; Dest temp"
         lv_insert = -1  # before the line
 
-    # print(toolChange["id"])
     return lv_output, lv_insert
 
 
@@ -258,29 +268,30 @@ def none_handler(p_tool_change, p_line_number):
             if RAM_TEMP in p_tool_change and p_tool_change[RAM_TEMP] > 0:
                 # If we have a ram temp for this toolchange we set the temp
                 if ram_temp_diff_wait_for_stabilize:
-                    lv_output = "M109 S" + str(p_tool_change[RAM_TEMP])
+                    lv_output = "M109 S" + str(p_tool_change[RAM_TEMP]) + "; Ram temp"
                 else:
-                    lv_output = "M104 S" + str(p_tool_change[RAM_TEMP])
+                    lv_output = "M104 S" + str(p_tool_change[RAM_TEMP]) + "; Ram temp"
 
                 lv_insert = 1
             elif ram_temp_diff > 0:  # Only if set and no direct ram temp
                 # Add temp drop for better tip
                 lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
                 if ram_temp_diff_wait_for_stabilize:
-                    lv_output = "M109 S" + str(lv_lower_temp)
+                    lv_output = "M109 S" + str(lv_lower_temp) + "; Ram temp"
                 else:
-                    lv_output = "M104 S" + str(lv_lower_temp)
+                    lv_output = "M104 S" + str(lv_lower_temp) + "; Ram temp"
 
-                lv_output = "M104 S" + str(lv_lower_temp)
                 lv_insert = 1  # after the line
 
-        if p_tool_change.get(LOAD_START_LINE) == p_line_number:
-            if ram_temp_diff > 0:  # Only if set
+        if p_tool_change.get(UNLOAD_LINE) == p_line_number:
+            if ram_temp_diff > 0 or RAM_TEMP in p_tool_change:
+                # We have a modified temp for ram
+                # So we need to restore it
                 lv_restore_temp = int(p_tool_change[CURR_TEMP])
                 # don't wait for stable nozzle temperature
                 # (enough time for nozzle to reach correct temp)
-                lv_output = "M104 S" + str(lv_restore_temp)
-                lv_insert = 1
+                lv_output = "M104 S" + str(lv_restore_temp) + "; Dest temp"
+                lv_insert = -1
 
         if p_tool_change.get(DEST_TEMP_LINE) == p_line_number:
             # nothing to do
@@ -294,9 +305,10 @@ def none_handler(p_tool_change, p_line_number):
             # nothing to do
             pass
 
-        if p_tool_change.get(PRINT_LINE) == p_line_number:
-            # nothing to do
-            pass
+        if p_tool_change.get(PRINT_LINE) == p_line_number and PURGE_TEMP in p_tool_change:
+            # We have a purge temp so we need to wait for destination temp now
+            lv_output = "M109 S" + str(p_tool_change[CURR_TEMP]) + "; Dest temp"
+            lv_insert = 1  # insert after the purge line identificator
 
     return lv_output, lv_insert
 
@@ -571,13 +583,18 @@ for line in infile:
             # Nothing todo anymore
             break
 
+    if ";" in output:
+        output += " - " + MYGCODEMARK + "\n"
+    else:
+        output += "; " + MYGCODEMARK + "\n"
+
     # Perform the action determined for this line
     if action == 1:  # insert after this line
         file_write(outfile, line)
-        file_write(outfile, output + " ; " + MYGCODEMARK + "\n")
+        file_write(outfile, output)
 
     if action == -1:  # insert before this line
-        file_write(outfile, output + " ; " + MYGCODEMARK + "\n")
+        file_write(outfile, output)
         file_write(outfile, line)
 
     if action == -9:  # comment out the line
