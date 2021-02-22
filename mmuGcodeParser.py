@@ -47,6 +47,8 @@ LOW2HIGH = "Low2High"
 HIGH2LOW = "High2Low"
 NOTRANSITION = "NoTrans"
 ID_LINE = "idLine"
+RAM_TEMP = "ramTemp"
+PURGE_TEMP = "purgeTemp"
 
 """ 
 ### ---------------------------------------------------------------
@@ -97,11 +99,17 @@ targetTemp = r"^M104 S([0-9]*)"
 start = r"^; toolchange #[0-9]*"
 
 # Regular expressions to find settings
+
+# Printer Start G-Code
 mmuGPDebug = r"^; MMUGP Debug"
 mmuGPRamTempDiff = r"^; MMUGP Ram Temp Diff ([0-9]*)"
 mmuGPRamTempDiffWaitStabilize = r"^; MMUPG Ram Temp Diff Wait For Stabilize"
 mmuGPFilenamePrefix = r"^; MMUGP Filename Prefix ?([a-zA-Z_-]*)"
 mmuGPFilenameSuffix = r"^; MMUGP Filename Suffix ?([a-zA-Z_-]*)"
+
+# Filament End G-Code
+mmuGPRamTemp = r"^; MMUGP Ram Temp ([0-9]*)"
+mmuGPPurgeTemp = r"^; MMUGP Purge Temp ([0-9]*)"
 
 # turn those strings into compiled regular expressions so we can search
 start_detect = re.compile(start)
@@ -116,6 +124,8 @@ mmugp_ram_temp_diff_detect = re.compile(mmuGPRamTempDiff)
 mmugp_ram_temp_diff_wait_stabilize_detect = re.compile(mmuGPRamTempDiffWaitStabilize)
 mmugp_filename_prefix_detect = re.compile(mmuGPFilenamePrefix)
 mmugp_filename_suffix_detect = re.compile(mmuGPFilenameSuffix)
+mmugp_ram_temp_detect = re.compile(mmuGPRamTemp)
+mmugp_purge_temp_detect = re.compile(mmuGPPurgeTemp)
 
 """ 
 ### ---------------------------------------------------------------
@@ -396,6 +406,18 @@ for line in infile:
         if len(myToolChanges) > 0:  # we have already at least one entry
             # remember the line number
             myToolChanges[toolChangeID][line_number] = UNLOAD_LINE
+
+    # Search for Ram Temp setting
+    ram_temp_match = mmugp_ram_temp_detect.search(line)
+    if ram_temp_match is not None:
+        if len(myToolChanges) > 0 and not RAM_TEMP in myToolChanges[toolChangeID]:
+            myToolChanges[toolChangeID][RAM_TEMP] = ram_temp_match.group(1)
+
+    # Search for Purge Temp setting
+    purge_temp_match = mmugp_purge_temp_detect.search(line)
+    if purge_temp_match is not None:
+        if len(myToolChanges) > 0 and not PURGE_TEMP in myToolChanges[toolChangeID]:
+            myToolChanges[toolChangeID][PURGE_TEMP] = purge_temp_match.group(1)
 
     # Search for the purge command
     purge_match = purge_detect.search(line)
