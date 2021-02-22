@@ -155,30 +155,31 @@ def low2high_handler(p_tool_change, p_line_number):
 
     lv_output = ""
     lv_insert = 0  # 0 = don't insert, +1 = after the line, -1 before the line, -9 = comment out
-    if p_tool_change[p_line_number] == UNLOAD_START_LINE:
+
+    if p_tool_change[UNLOAD_START_LINE] == p_line_number:
         # Add temp drop for better tip
         if ram_temp_diff > 0:  # Only if set
             lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
             lv_output = "M104 S" + str(lv_lower_temp)
             lv_insert = 1
 
-    if p_tool_change[p_line_number] == DEST_TEMP_LINE:
+    if p_tool_change[DEST_TEMP_LINE] == p_line_number:
         # We need to stay cool here
         # remove/comment existing line
         lv_insert = -9
 
-    if p_tool_change[p_line_number] == UNLOAD_LINE:
+    if p_tool_change[UNLOAD_LINE] == p_line_number:
         # set hot (to save some time)
         # insert the destination temp
         lv_output = "M104 S" + p_tool_change[DEST_TEMP]
         lv_insert = -1  # insert before start unloading
 
-    if p_tool_change[p_line_number] == PURGE_LINE:
+    if p_tool_change[PURGE_LINE] == p_line_number:
         # We have to wait for destination temp
         lv_output = "M109 S" + p_tool_change[DEST_TEMP]
         lv_insert = 1  # insert after the purge line identificator
 
-    if p_tool_change[p_line_number] == PRINT_LINE:
+    if p_tool_change[PRINT_LINE] == p_line_number:
         # We are already hot. Nothing to do here
         pass
 
@@ -204,18 +205,19 @@ def high2low_handler(p_tool_change, p_line_number):
 
     lv_output = ""
     lv_insert = 0  # 0 = don't insert, +1 = after the line, -1 before the line, -9 = comment out
-    if p_tool_change[p_line_number] == UNLOAD_START_LINE:
+
+    if p_tool_change[UNLOAD_START_LINE] == p_line_number:
         if ram_temp_diff > 0:  # Only if set
             # Add temp drop for better tip
             lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
             lv_output = "M104 S" + str(lv_lower_temp)
             lv_insert = 1  # after the line
 
-    if p_tool_change[p_line_number] == DEST_TEMP_LINE:
+    if p_tool_change[DEST_TEMP_LINE] == p_line_number:
         # remove/comment existing line
         lv_insert = -9
 
-    if p_tool_change[p_line_number] == UNLOAD_LINE:
+    if p_tool_change[UNLOAD_LINE] == p_line_number:
         # During unloading there is nothing to do
         # In case we are dropping the temp during ramming, we need to bump it up again
         if ram_temp_diff > 0:  # Only if set
@@ -223,12 +225,12 @@ def high2low_handler(p_tool_change, p_line_number):
             lv_insert = -1  # before the line
         pass
 
-    if p_tool_change[p_line_number] == PURGE_LINE:
+    if p_tool_change[PURGE_LINE] == p_line_number:
         # set to cold. We will cool down faster during purging
         lv_output = "M104 S" + p_tool_change[DEST_TEMP]
         lv_insert = 1  # after the line
 
-    if p_tool_change[p_line_number] == PRINT_LINE:
+    if p_tool_change[PRINT_LINE] == p_line_number:
         # wait for stable nozzle temp
         lv_output = "M109 S" + p_tool_change[DEST_TEMP]
         lv_insert = -1  # before the line
@@ -241,8 +243,9 @@ def none_handler(p_tool_change, p_line_number):
     # Just in case we need to do something at the end
     lv_output = ""
     lv_insert = 0  # 0 = don't insert, +1 = after the line, -1 before the line, -9 = comment out
+
     if CURR_TEMP in p_tool_change:
-        if p_tool_change[p_line_number] == UNLOAD_START_LINE:
+        if p_tool_change[UNLOAD_START_LINE] == p_line_number:
             if ram_temp_diff > 0:  # Only if set
                 # Add temp drop for better tip
                 lv_lower_temp = int(p_tool_change[CURR_TEMP]) - ram_temp_diff
@@ -254,7 +257,7 @@ def none_handler(p_tool_change, p_line_number):
                     lv_output = "M104 S" + str(lv_lower_temp)
                 lv_insert = 1  # after the line
 
-        if p_tool_change[p_line_number] == LOAD_START_LINE:
+        if p_tool_change[LOAD_START_LINE] == p_line_number:
             if ram_temp_diff > 0:  # Only if set
                 lv_restore_temp = int(p_tool_change[CURR_TEMP])
                 # don't wait for stable nozzle temperature
@@ -262,19 +265,19 @@ def none_handler(p_tool_change, p_line_number):
                 lv_output = "M104 S" + str(lv_restore_temp)
                 lv_insert = 1
 
-        if p_tool_change[p_line_number] == DEST_TEMP_LINE:
+        if p_tool_change[DEST_TEMP_LINE] == p_line_number:
             # nothing to do
             pass
 
-        if p_tool_change[p_line_number] == UNLOAD_LINE:
+        if p_tool_change[UNLOAD_LINE] == p_line_number:
             # nothing to do
             pass
 
-        if p_tool_change[p_line_number] == PURGE_LINE:
+        if p_tool_change[PURGE_LINE] == p_line_number:
             # nothing to do
             pass
 
-        if p_tool_change[p_line_number] == PRINT_LINE:
+        if p_tool_change[PRINT_LINE] == p_line_number:
             # nothing to do
             pass
 
@@ -358,7 +361,7 @@ for line in infile:
             switchID = start_position_match.group(0)
             # remember the tool change start position
             myToolChange["id"] = switchID
-            myToolChange[line_number] = ID_LINE
+            myToolChange[ID_LINE] = line_number
             toolChangeID = switchID  # Remember the last tool change ID for later reference
             # create dictionary entry
             myToolChanges[toolChangeID] = myToolChange
@@ -368,14 +371,14 @@ for line in infile:
     if before_unload_match is not None:
         if len(myToolChanges) > 0:  # we found at least the start tool change
             # remember the line number
-            myToolChanges[toolChangeID][line_number] = UNLOAD_START_LINE
+            myToolChanges[toolChangeID][UNLOAD_START_LINE] = line_number
 
     # Search for the 'before loading' position
     before_load_match = before_load_detect.search(line)
     if before_load_match is not None:
         if len(myToolChanges) > 0:  # we found at least the start tool change
             # remember the line number
-            myToolChanges[toolChangeID][line_number] = LOAD_START_LINE
+            myToolChanges[toolChangeID][LOAD_START_LINE] = line_number
 
     # Search for the target temperature
     targetTemp_match = target_temp_detect.search(line)
@@ -391,7 +394,7 @@ for line in infile:
                     # Remember the temperature
                     myToolChanges[toolChangeID][DEST_TEMP] = temp
                     # remember the line number
-                    myToolChanges[toolChangeID][line_number] = DEST_TEMP_LINE
+                    myToolChanges[toolChangeID][DEST_TEMP_LINE] = line_number
         else:
             # Search for the initial Temperature
             if initTemp == 0:
@@ -405,7 +408,7 @@ for line in infile:
     if unloading_match is not None:
         if len(myToolChanges) > 0:  # we have already at least one entry
             # remember the line number
-            myToolChanges[toolChangeID][line_number] = UNLOAD_LINE
+            myToolChanges[toolChangeID][UNLOAD_LINE] = line_number
 
     # Search for Ram Temp setting
     ram_temp_match = mmugp_ram_temp_detect.search(line)
@@ -424,14 +427,14 @@ for line in infile:
     if purge_match is not None:
         if len(myToolChanges) > 0:  # we have already at least one entry
             # remember the line number
-            myToolChanges[toolChangeID][line_number] = PURGE_LINE
+            myToolChanges[toolChangeID][PURGE_LINE] = line_number
 
     # Search for the print command
     print_match = print_detect.search(line)
     if print_match is not None:
         if len(myToolChanges) > 0:  # we have already at least one entry
             # remember the line number
-            myToolChanges[toolChangeID][line_number] = PRINT_LINE
+            myToolChanges[toolChangeID][PRINT_LINE] = line_number
 
     # Search for Debug setting
     debug_match = mmugp_debug_detect.search(line)
