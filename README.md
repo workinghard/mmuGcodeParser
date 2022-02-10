@@ -80,4 +80,4 @@ This is a first release and a proof of concept. I've printed the test object wit
 I'm currently using it for any multi material prints as it helps as soon as you use filament with different temperature requirements.
 Once the process is refined, it will be implemented in Slic3r so no additional post processing is required.
 
-For further discussions please use this official [Prusa forum thread](https://sourceforge.net/projects/linuxconsole/)
+For further discussions please use this official [Prusa forum thread](https://forum.prusaprinters.org/forum/original-prusa-i3-mmu2s-mmu2-general-discussion-announcements-and-releases/mmu2-real-multi-material/)
